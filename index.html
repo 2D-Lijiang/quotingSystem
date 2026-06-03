@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>报价系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .quote-list {
+            margin-top: 30px;
+            border-top: 2px solid #e0e0e0;
+            padding-top: 20px;
+        }
+
+        .quote-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .quote-item h3 {
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .quote-item p {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .quote-item .price {
+            color: #764ba2;
+            font-weight: bold;
+            font-size: 18px;
+            margin-top: 8px;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💼 报价系统</h1>
+        <p class="subtitle">快速创建和管理您的报价单</p>
+
+        <form id="quoteForm">
+            <div class="form-group">
+                <label for="customerName">客户名称</label>
+                <input type="text" id="customerName" placeholder="请输入客户名称" required>
+            </div>
+
+            <div class="form-group">
+                <label for="productName">产品/服务名称</label>
+                <input type="text" id="productName" placeholder="请输入产品或服务名称" required>
+            </div>
+
+            <div class="form-group">
+                <label for="description">详细描述</label>
+                <textarea id="description" placeholder="请描述产品或服务的详细信息"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="quantity">数量</label>
+                <input type="number" id="quantity" placeholder="请输入数量" min="1" value="1" required>
+            </div>
+
+            <div class="form-group">
+                <label for="unitPrice">单价 (元)</label>
+                <input type="number" id="unitPrice" placeholder="请输入单价" min="0" step="0.01" required>
+            </div>
+
+            <div class="form-group">
+                <label for="currency">货币类型</label>
+                <select id="currency">
+                    <option value="CNY">人民币 (CNY)</option>
+                    <option value="USD">美元 (USD)</option>
+                    <option value="EUR">欧元 (EUR)</option>
+                    <option value="GBP">英镑 (GBP)</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn">生成报价</button>
+        </form>
+
+        <div id="quoteList" class="quote-list hidden">
+            <h2 style="margin-bottom: 16px; color: #333;">报价记录</h2>
+            <div id="quotesContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        let quotes = [];
+
+        document.getElementById('quoteForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const customerName = document.getElementById('customerName').value;
+            const productName = document.getElementById('productName').value;
+            const description = document.getElementById('description').value;
+            const quantity = parseInt(document.getElementById('quantity').value);
+            const unitPrice = parseFloat(document.getElementById('unitPrice').value);
+            const currency = document.getElementById('currency').value;
+
+            const totalPrice = quantity * unitPrice;
+            const currencySymbols = {
+                'CNY': '¥',
+                'USD': '$',
+                'EUR': '€',
+                'GBP': '£'
+            };
+
+            const quote = {
+                id: Date.now(),
+                customerName,
+                productName,
+                description,
+                quantity,
+                unitPrice,
+                totalPrice,
+                currency,
+                date: new Date().toLocaleString('zh-CN')
+            };
+
+            quotes.unshift(quote);
+
+            renderQuotes();
+
+            this.reset();
+            document.getElementById('quantity').value = '1';
+        });
+
+        function renderQuotes() {
+            const quotesContainer = document.getElementById('quotesContainer');
+            const quoteList = document.getElementById('quoteList');
+
+            if (quotes.length === 0) {
+                quoteList.classList.add('hidden');
+                return;
+            }
+
+            quoteList.classList.remove('hidden');
+
+            const currencySymbols = {
+                'CNY': '¥',
+                'USD': '$',
+                'EUR': '€',
+                'GBP': '£'
+            };
+
+            quotesContainer.innerHTML = quotes.map(quote => `
+                <div class="quote-item">
+                    <h3>${quote.customerName} - ${quote.productName}</h3>
+                    <p><strong>数量:</strong> ${quote.quantity}</p>
+                    <p><strong>单价:</strong> ${currencySymbols[quote.currency]}${quote.unitPrice.toFixed(2)}</p>
+                    <p class="price"><strong>总计:</strong> ${currencySymbols[quote.currency]}${quote.totalPrice.toFixed(2)}</p>
+                    <p style="margin-top: 8px; font-size: 12px; color: #999;">创建时间：${quote.date}</p>
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>
