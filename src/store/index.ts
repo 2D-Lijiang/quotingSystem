@@ -7,6 +7,10 @@ import type {
   Customer,
   SystemConfig,
   CustomerLevel,
+  Dimensions,
+  FluteType,
+  PaperConfig,
+  CraftConfig,
 } from '@/types';
 
 // 默认系统配置
@@ -127,6 +131,19 @@ interface AppState {
   // 报价相关
   quotations: Quotation[];
   currentQuotation: Quotation | null;
+
+  // 报价草稿
+  quotationDraft: {
+    customerName: string;
+    customerLevel: CustomerLevel;
+    selectedTemplateId: string | null;
+    dimensions: Dimensions;
+    fluteType: FluteType;
+    paperConfig: PaperConfig;
+    craftConfig: CraftConfig;
+    quantity: number;
+    remark: string;
+  };
 
   // 客户相关
   customers: Customer[];
