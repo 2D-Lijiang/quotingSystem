@@ -28,6 +28,43 @@ const defaultConfig: SystemConfig = {
 // 默认模板数据
 const defaultTemplates: Template[] = [
   {
+    id: 'template-color-printing-box',
+    name: '通用彩印箱',
+    type: 'standard',
+    category: '外箱',
+    formula: {
+      area: '(length + width + 5) * (width + 2 * height + 3) / 10000',
+      cost: 'area * paperPrice * (1 + lossRate)',
+    },
+    parameters: [
+      {
+        name: 'jointAllowance',
+        label: '接头余量',
+        type: 'number',
+        default: 5,
+        unit: 'cm',
+        validation: { min: 0, max: 20, required: true },
+      },
+      {
+        name: 'trimAllowance',
+        label: '修边余量',
+        type: 'number',
+        default: 3,
+        unit: 'cm',
+        validation: { min: 0, max: 20, required: true },
+      },
+    ],
+    rules: {
+      profitRate: defaultConfig.profitRates,
+      lossRate: defaultConfig.defaultLossRate,
+      taxRate: defaultConfig.defaultTaxRate,
+    },
+    description: '通用彩印箱模板，适用于各类产品包装',
+    version: '1.0.0',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
     id: 'template-standard-outer',
     name: '标准外箱',
     type: 'standard',
@@ -163,6 +200,11 @@ interface AppState {
   updateTemplate: (id: string, template: Partial<Template>) => void;
   deleteTemplate: (id: string) => void;
   setCurrentTemplate: (template: Template | null) => void;
+
+  // 报价草稿操作
+  updateQuotationDraft: (draft: Partial<AppState['quotationDraft']>) => void;
+  resetQuotationDraft: () => void;
+  copyQuotationToDraft: (quotation: Quotation) => void;
 
   // 报价操作
   addQuotation: (quotation: Omit<Quotation, 'id' | 'createdAt'>) => void;
