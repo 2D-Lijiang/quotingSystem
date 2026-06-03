@@ -1,8 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Calculator,
   Package,
   ChevronRight,
   ChevronDown,
@@ -12,18 +11,12 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { useAppStore } from '@/store';
-import { Button, Input, Card, Select, BottomSheetSelect } from '@/components/ui';
+import { Button, Input, Card, BottomSheetSelect } from '@/components/ui';
 import type {
   Template,
-  Dimensions,
-  FluteType,
   CustomerLevel,
-  PaperConfig,
-  CraftConfig,
   PrintingMethod,
   SpecialCraft,
-  FLUTE_TYPE_LABELS,
-  CUSTOMER_LEVEL_LABELS,
 } from '@/types';
 import {
   calculateCost,
@@ -36,65 +29,54 @@ import {
 
 export const QuotationPage: React.FC = () => {
   const navigate = useNavigate();
-  const { templates, config, addQuotation, showToast, customers } = useAppStore();
+  const {
+    templates,
+    config,
+    addQuotation,
+    showToast,
+    customers,
+    quotationDraft,
+    updateQuotationDraft,
+    resetQuotationDraft,
+  } = useAppStore();
 
-  // 表单状态
-  const [customerName, setCustomerName] = useState('');
-  const [customerLevel, setCustomerLevel] = useState<CustomerLevel>('normal');
-  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
-  const [dimensions, setDimensions] = useState<Dimensions>({
-    length: 0,
-    width: 0,
-    height: 0,
-    type: 'outer',
-  });
-  const [fluteType, setFluteType] = useState<FluteType>('B');
-  const [paperConfig, setPaperConfig] = useState<PaperConfig>({
-    facePaper: 250,
-    innerPaper: 250,
-    mediumPaper: 150,
-  });
-  const [craftConfig, setCraftConfig] = useState<CraftConfig>({
-    printing: { colors: 0, method: 'offset' },
-    special: [],
-  });
-  const [quantity, setQuantity] = useState(1000);
-  const [remark, setRemark] = useState('');
+  const selectedTemplate = useMemo(() => {
+    return templates.find(t => t.id === quotationDraft.selectedTemplateId) || null;
+  }, [templates, quotationDraft.selectedTemplateId]);
 
-  // UI状态
-  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
-  const [showFluteSelector, setShowFluteSelector] = useState(false);
-  const [showLevelSelector, setShowLevelSelector] = useState(false);
-  const [showCostBreakdown, setShowCostBreakdown] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const [showTemplateSelector, setShowTemplateSelector] = React.useState(false);
+  const [showFluteSelector, setShowFluteSelector] = React.useState(false);
+  const [showLevelSelector, setShowLevelSelector] = React.useState(false);
+  const [showCostBreakdown, setShowCostBreakdown] = React.useState(false);
+  const [isSaving, setIsSaving] = React.useState(false);
 
   // 客户建议列表
   const customerSuggestions = useMemo(() => {
-    if (!customerName) return [];
+    if (!quotationDraft.customerName) return [];
     return customers
-      .filter((c) => c.name.includes(customerName))
+      .filter((c) => c.name.includes(quotationDraft.customerName))
       .slice(0, 5);
-  }, [customerName, customers]);
+  }, [quotationDraft.customerName, customers]);
 
   // 计算报价
   const quotation = useMemo(() => {
     if (!selectedTemplate) return null;
 
-    const validation = validateDimensions(dimensions);
+    const validation = validateDimensions(quotationDraft.dimensions);
     if (!validation.valid) return null;
 
     const costBreakdown = calculateCost(
-      dimensions,
-      fluteType,
-      paperConfig,
-      craftConfig,
-      customerLevel,
+      quotationDraft.dimensions,
+      quotationDraft.fluteType,
+      quotationDraft.paperConfig,
+      quotationDraft.craftConfig,
+      quotationDraft.customerLevel,
       selectedTemplate,
       config.paperPrice
     );
 
     const unitPrice = calculateUnitPrice(costBreakdown);
-    const totalPrice = calculateTotalPrice(unitPrice, quantity);
+    const totalPrice = calculateTotalPrice(unitPrice, quotationDraft.quantity);
 
     return {
       costBreakdown,
@@ -103,12 +85,7 @@ export const QuotationPage: React.FC = () => {
     };
   }, [
     selectedTemplate,
-    dimensions,
-    fluteType,
-    paperConfig,
-    craftConfig,
-    customerLevel,
-    quantity,
+    quotationDraft,
     config.paperPrice,
   ]);
 
@@ -119,18 +96,18 @@ export const QuotationPage: React.FC = () => {
       return;
     }
 
-    if (!customerName.trim()) {
+    if (!quotationDraft.customerName.trim()) {
       showToast('请输入客户名称', 'error');
       return;
     }
 
-    const validation = validateDimensions(dimensions);
+    const validation = validateDimensions(quotationDraft.dimensions);
     if (!validation.valid) {
       showToast(validation.message || '尺寸无效', 'error');
       return;
     }
 
-    const qtyValidation = validateQuantity(quantity);
+    const qtyValidation = validateQuantity(quotationDraft.quantity);
     if (!qtyValidation.valid) {
       showToast(qtyValidation.message || '数量无效', 'error');
       return;
@@ -146,32 +123,27 @@ export const QuotationPage: React.FC = () => {
     try {
       addQuotation({
         customerId: '',
-        customerName,
-        customerLevel,
+        customerName: quotationDraft.customerName,
+        customerLevel: quotationDraft.customerLevel,
         templateId: selectedTemplate.id,
         templateSnapshot: selectedTemplate,
         parameters: {},
-        dimensions,
-        fluteType,
-        paperConfig,
-        craftConfig,
-        quantity,
+        dimensions: quotationDraft.dimensions,
+        fluteType: quotationDraft.fluteType,
+        paperConfig: quotationDraft.paperConfig,
+        craftConfig: quotationDraft.craftConfig,
+        quantity: quotationDraft.quantity,
         costBreakdown: quotation.costBreakdown,
         unitPrice: quotation.unitPrice,
         totalPrice: quotation.totalPrice,
         paperPrice: config.paperPrice,
-        remark,
+        remark: quotationDraft.remark,
       });
 
       showToast('报价保存成功', 'success');
 
       // 重置表单
-      setCustomerName('');
-      setCustomerLevel('normal');
-      setSelectedTemplate(null);
-      setDimensions({ length: 0, width: 0, height: 0, type: 'outer' });
-      setQuantity(1000);
-      setRemark('');
+      resetQuotationDraft();
     } catch (error) {
       showToast('保存失败,请重试', 'error');
     } finally {
@@ -196,8 +168,8 @@ export const QuotationPage: React.FC = () => {
               <Input
                 label="客户名称"
                 placeholder="输入客户名称"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
+                value={quotationDraft.customerName}
+                onChange={(e) => updateQuotationDraft({ customerName: e.target.value })}
               />
               {customerSuggestions.length > 0 && (
                 <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-10">
@@ -206,8 +178,10 @@ export const QuotationPage: React.FC = () => {
                       key={customer.id}
                       className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-0"
                       onClick={() => {
-                        setCustomerName(customer.name);
-                        setCustomerLevel(customer.level);
+                        updateQuotationDraft({
+                          customerName: customer.name,
+                          customerLevel: customer.level,
+                        });
                       }}
                     >
                       <div className="font-medium text-gray-900">{customer.name}</div>
@@ -229,7 +203,7 @@ export const QuotationPage: React.FC = () => {
                 className="w-full h-11 px-3 rounded-xl border border-gray-300 bg-white text-left flex items-center justify-between"
               >
                 <span className="text-gray-900">
-                  {customerLevel === 'vip' ? '大客户' : customerLevel === 'longterm' ? '长期客户' : '普通客户'}
+                  {quotationDraft.customerLevel === 'vip' ? '大客户' : quotationDraft.customerLevel === 'longterm' ? '长期客户' : '普通客户'}
                 </span>
                 <ChevronRight className="w-5 h-5 text-gray-400" />
               </button>
@@ -275,9 +249,11 @@ export const QuotationPage: React.FC = () => {
               <label className="text-sm font-medium text-gray-700">纸箱尺寸</label>
               <div className="flex gap-2">
                 <button
-                  onClick={() => setDimensions({ ...dimensions, type: 'outer' })}
+                  onClick={() => updateQuotationDraft({
+                    dimensions: { ...quotationDraft.dimensions, type: 'outer' }
+                  })}
                   className={`px-3 py-1 text-xs rounded-lg transition-colors ${
-                    dimensions.type === 'outer'
+                    quotationDraft.dimensions.type === 'outer'
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 text-gray-600'
                   }`}
@@ -285,9 +261,11 @@ export const QuotationPage: React.FC = () => {
                   外径
                 </button>
                 <button
-                  onClick={() => setDimensions({ ...dimensions, type: 'inner' })}
+                  onClick={() => updateQuotationDraft({
+                    dimensions: { ...quotationDraft.dimensions, type: 'inner' }
+                  })}
                   className={`px-3 py-1 text-xs rounded-lg transition-colors ${
-                    dimensions.type === 'inner'
+                    quotationDraft.dimensions.type === 'inner'
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 text-gray-600'
                   }`}
@@ -302,28 +280,28 @@ export const QuotationPage: React.FC = () => {
                 label="长"
                 type="number"
                 suffix="cm"
-                value={dimensions.length || ''}
-                onChange={(e) =>
-                  setDimensions({ ...dimensions, length: Number(e.target.value) })
-                }
+                value={quotationDraft.dimensions.length || ''}
+                onChange={(e) => updateQuotationDraft({
+                  dimensions: { ...quotationDraft.dimensions, length: Number(e.target.value) }
+                })}
               />
               <Input
                 label="宽"
                 type="number"
                 suffix="cm"
-                value={dimensions.width || ''}
-                onChange={(e) =>
-                  setDimensions({ ...dimensions, width: Number(e.target.value) })
-                }
+                value={quotationDraft.dimensions.width || ''}
+                onChange={(e) => updateQuotationDraft({
+                  dimensions: { ...quotationDraft.dimensions, width: Number(e.target.value) }
+                })}
               />
               <Input
                 label="高"
                 type="number"
                 suffix="cm"
-                value={dimensions.height || ''}
-                onChange={(e) =>
-                  setDimensions({ ...dimensions, height: Number(e.target.value) })
-                }
+                value={quotationDraft.dimensions.height || ''}
+                onChange={(e) => updateQuotationDraft({
+                  dimensions: { ...quotationDraft.dimensions, height: Number(e.target.value) }
+                })}
               />
             </div>
           </div>
@@ -341,7 +319,7 @@ export const QuotationPage: React.FC = () => {
                 className="w-full h-11 px-3 rounded-xl border border-gray-300 bg-white text-left flex items-center justify-between"
               >
                 <span className="text-gray-900">
-                  {fluteType === 'A' ? 'A楞' : fluteType === 'B' ? 'B楞' : fluteType === 'C' ? 'C楞' : fluteType === 'E' ? 'E楞' : fluteType === 'AB' ? 'AB楞' : 'BC楞'}
+                  {quotationDraft.fluteType === 'A' ? 'A楞' : quotationDraft.fluteType === 'B' ? 'B楞' : quotationDraft.fluteType === 'C' ? 'C楞' : quotationDraft.fluteType === 'E' ? 'E楞' : quotationDraft.fluteType === 'AB' ? 'AB楞' : 'BC楞'}
                 </span>
                 <ChevronRight className="w-5 h-5 text-gray-400" />
               </button>
@@ -352,28 +330,28 @@ export const QuotationPage: React.FC = () => {
                 label="面纸"
                 type="number"
                 suffix="g"
-                value={paperConfig.facePaper || ''}
-                onChange={(e) =>
-                  setPaperConfig({ ...paperConfig, facePaper: Number(e.target.value) })
-                }
+                value={quotationDraft.paperConfig.facePaper || ''}
+                onChange={(e) => updateQuotationDraft({
+                  paperConfig: { ...quotationDraft.paperConfig, facePaper: Number(e.target.value) }
+                })}
               />
               <Input
                 label="里纸"
                 type="number"
                 suffix="g"
-                value={paperConfig.innerPaper || ''}
-                onChange={(e) =>
-                  setPaperConfig({ ...paperConfig, innerPaper: Number(e.target.value) })
-                }
+                value={quotationDraft.paperConfig.innerPaper || ''}
+                onChange={(e) => updateQuotationDraft({
+                  paperConfig: { ...quotationDraft.paperConfig, innerPaper: Number(e.target.value) }
+                })}
               />
               <Input
                 label="芯纸"
                 type="number"
                 suffix="g"
-                value={paperConfig.mediumPaper || ''}
-                onChange={(e) =>
-                  setPaperConfig({ ...paperConfig, mediumPaper: Number(e.target.value) })
-                }
+                value={quotationDraft.paperConfig.mediumPaper || ''}
+                onChange={(e) => updateQuotationDraft({
+                  paperConfig: { ...quotationDraft.paperConfig, mediumPaper: Number(e.target.value) }
+                })}
               />
             </div>
           </div>
@@ -387,32 +365,32 @@ export const QuotationPage: React.FC = () => {
                 label="印刷色数"
                 type="number"
                 suffix="色"
-                value={craftConfig.printing?.colors || 0}
-                onChange={(e) =>
-                  setCraftConfig({
-                    ...craftConfig,
+                value={quotationDraft.craftConfig.printing?.colors || 0}
+                onChange={(e) => updateQuotationDraft({
+                  craftConfig: {
+                    ...quotationDraft.craftConfig,
                     printing: {
                       colors: Number(e.target.value),
-                      method: craftConfig.printing?.method || 'offset',
+                      method: quotationDraft.craftConfig.printing?.method || 'offset',
                     },
-                  })
-                }
+                  },
+                })}
               />
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   印刷方式
                 </label>
                 <select
-                  value={craftConfig.printing?.method || 'offset'}
-                  onChange={(e) =>
-                    setCraftConfig({
-                      ...craftConfig,
+                  value={quotationDraft.craftConfig.printing?.method || 'offset'}
+                  onChange={(e) => updateQuotationDraft({
+                    craftConfig: {
+                      ...quotationDraft.craftConfig,
                       printing: {
-                        colors: craftConfig.printing?.colors || 0,
+                        colors: quotationDraft.craftConfig.printing?.colors || 0,
                         method: e.target.value as PrintingMethod,
                       },
-                    })
-                  }
+                    },
+                  })}
                   className="w-full h-11 px-3 rounded-xl border border-gray-300 bg-white"
                 >
                   <option value="offset">胶印</option>
@@ -428,22 +406,26 @@ export const QuotationPage: React.FC = () => {
               <div className="flex flex-wrap gap-2">
                 {['烫金', '覆膜', '压纹', 'UV'].map((craft) => {
                   const craftValue = craft === '烫金' ? 'foil' : craft === '覆膜' ? 'lamination' : craft === '压纹' ? 'embossing' : 'spotUV';
-                  const isSelected = craftConfig.special?.includes(craftValue as SpecialCraft);
+                  const isSelected = quotationDraft.craftConfig.special?.includes(craftValue as SpecialCraft);
 
                   return (
                     <button
                       key={craft}
                       onClick={() => {
-                        const special = craftConfig.special || [];
+                        const special = quotationDraft.craftConfig.special || [];
                         if (isSelected) {
-                          setCraftConfig({
-                            ...craftConfig,
-                            special: special.filter((s) => s !== craftValue),
+                          updateQuotationDraft({
+                            craftConfig: {
+                              ...quotationDraft.craftConfig,
+                              special: special.filter((s) => s !== craftValue),
+                            },
                           });
                         } else {
-                          setCraftConfig({
-                            ...craftConfig,
-                            special: [...special, craftValue as SpecialCraft],
+                          updateQuotationDraft({
+                            craftConfig: {
+                              ...quotationDraft.craftConfig,
+                              special: [...special, craftValue as SpecialCraft],
+                            },
                           });
                         }
                       }}
@@ -468,8 +450,8 @@ export const QuotationPage: React.FC = () => {
             label="订单数量"
             type="number"
             suffix="个"
-            value={quantity || ''}
-            onChange={(e) => setQuantity(Number(e.target.value))}
+            value={quotationDraft.quantity || ''}
+            onChange={(e) => updateQuotationDraft({ quantity: Number(e.target.value) })}
           />
         </Card>
 
@@ -551,8 +533,8 @@ export const QuotationPage: React.FC = () => {
               备注(可选)
             </label>
             <textarea
-              value={remark}
-              onChange={(e) => setRemark(e.target.value)}
+              value={quotationDraft.remark}
+              onChange={(e) => updateQuotationDraft({ remark: e.target.value })}
               placeholder="输入备注信息..."
               rows={3}
               className="w-full px-3 py-2 rounded-xl border border-gray-300 bg-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -593,10 +575,9 @@ export const QuotationPage: React.FC = () => {
           value: t.id,
           label: `${t.name} (${t.category})`,
         }))}
-        value={selectedTemplate?.id}
+        value={quotationDraft.selectedTemplateId}
         onChange={(value) => {
-          const template = templates.find((t) => t.id === value);
-          setSelectedTemplate(template || null);
+          updateQuotationDraft({ selectedTemplateId: value });
         }}
       />
 
@@ -613,8 +594,8 @@ export const QuotationPage: React.FC = () => {
           { value: 'AB', label: 'AB楞' },
           { value: 'BC', label: 'BC楞' },
         ]}
-        value={fluteType}
-        onChange={(value) => setFluteType(value as FluteType)}
+        value={quotationDraft.fluteType}
+        onChange={(value) => updateQuotationDraft({ fluteType: value as any })}
       />
 
       {/* 客户等级选择器 */}
@@ -627,8 +608,8 @@ export const QuotationPage: React.FC = () => {
           { value: 'longterm', label: '长期客户 (10%利润率)' },
           { value: 'vip', label: '大客户 (8%利润率)' },
         ]}
-        value={customerLevel}
-        onChange={(value) => setCustomerLevel(value as CustomerLevel)}
+        value={quotationDraft.customerLevel}
+        onChange={(value) => updateQuotationDraft({ customerLevel: value as CustomerLevel })}
       />
     </div>
   );

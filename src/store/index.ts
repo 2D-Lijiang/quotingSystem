@@ -233,6 +233,29 @@ export const useAppStore = create<AppState>()(
       currentTemplate: null,
       quotations: [],
       currentQuotation: null,
+      quotationDraft: {
+        customerName: '',
+        customerLevel: 'normal',
+        selectedTemplateId: 'template-color-printing-box', // 默认选择彩印箱
+        dimensions: {
+          length: 40,
+          width: 30,
+          height: 20,
+          type: 'outer',
+        },
+        fluteType: 'B',
+        paperConfig: {
+          facePaper: 250,
+          innerPaper: 250,
+          mediumPaper: 150,
+        },
+        craftConfig: {
+          printing: { colors: 4, method: 'offset' },
+          special: [],
+        },
+        quantity: 1000,
+        remark: '',
+      },
       customers: [],
       config: defaultConfig,
       isLoading: false,
@@ -372,6 +395,57 @@ export const useAppStore = create<AppState>()(
       setLoading: (loading) => {
         set({ isLoading: loading });
       },
+
+      // 报价草稿操作
+      updateQuotationDraft: (draft) => {
+        set((state) => ({
+          quotationDraft: { ...state.quotationDraft, ...draft },
+        }));
+      },
+
+      resetQuotationDraft: () => {
+        set({
+          quotationDraft: {
+            customerName: '',
+            customerLevel: 'normal',
+            selectedTemplateId: 'template-color-printing-box',
+            dimensions: {
+              length: 40,
+              width: 30,
+              height: 20,
+              type: 'outer',
+            },
+            fluteType: 'B',
+            paperConfig: {
+              facePaper: 250,
+              innerPaper: 250,
+              mediumPaper: 150,
+            },
+            craftConfig: {
+              printing: { colors: 4, method: 'offset' },
+              special: [],
+            },
+            quantity: 1000,
+            remark: '',
+          },
+        });
+      },
+
+      copyQuotationToDraft: (quotation) => {
+        set({
+          quotationDraft: {
+            customerName: quotation.customerName,
+            customerLevel: quotation.customerLevel,
+            selectedTemplateId: quotation.templateId,
+            dimensions: quotation.dimensions,
+            fluteType: quotation.fluteType,
+            paperConfig: quotation.paperConfig,
+            craftConfig: quotation.craftConfig,
+            quantity: quotation.quantity,
+            remark: quotation.remark || '',
+          },
+        });
+      },
     }),
     {
       name: 'carton-quotation-storage',
@@ -380,6 +454,7 @@ export const useAppStore = create<AppState>()(
         quotations: state.quotations,
         customers: state.customers,
         config: state.config,
+        quotationDraft: state.quotationDraft,
       }),
     }
   )
