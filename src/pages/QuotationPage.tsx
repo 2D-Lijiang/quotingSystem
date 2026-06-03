@@ -96,11 +96,6 @@ export const QuotationPage: React.FC = () => {
       return;
     }
 
-    if (!quotationDraft.customerName.trim()) {
-      showToast('请输入客户名称', 'error');
-      return;
-    }
-
     const validation = validateDimensions(quotationDraft.dimensions);
     if (!validation.valid) {
       showToast(validation.message || '尺寸无效', 'error');
